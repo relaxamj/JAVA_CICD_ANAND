@@ -1,17 +1,4 @@
 Simple Java App → Docker → Kubernetes (Step by Step)
-🎯 What You’ll Build
-
-A simple Java app
-
-Docker image for the app
-
-Deploy it on Kubernetes using YAML
-
-Access the app via browser
-
-🛠️ Prerequisites (Local Machine)
-
-Make sure these are installed:
 
 java -version
 mvn -version
