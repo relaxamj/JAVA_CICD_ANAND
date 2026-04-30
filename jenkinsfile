@@ -1,14 +1,39 @@
 pipeline {
     agent any
+
+    environment {
+        EC2_USER = "ubuntu"
+        EC2_HOST = "54.85.147.183"
+        APP_NAME = "java-cicd-1.0.jar"
+        REMOTE_DIR = "/home/ubuntu/app"
+    }
+
     stages {
-        stage('Checkout') {
+
+        stage('Clone Repo') {
             steps {
-                git 'https://github.com/your-repo/java-cicd-project.git'
+                git branch: 'main', url: 'https://github.com/relaxamj/JAVA_CICD_ANAND.git'
             }
         }
-        stage('Build') {
+
+        stage('Build JAR') {
             steps {
                 sh 'mvn clean package'
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(['ec2-iac']) {
+                    sh """
+                        scp -o StrictHostKeyChecking=no target/${APP_NAME} ${EC2_USER}@${EC2_HOST}:${REMOTE_DIR}/
+
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
+                            pkill -f ${APP_NAME} || true
+                            nohup java -jar ${REMOTE_DIR}/${APP_NAME} > ${REMOTE_DIR}/app.log 2>&1 &
+                        '
+                    """
+                }
             }
         }
     }
