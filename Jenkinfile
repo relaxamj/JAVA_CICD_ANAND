@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Checkout Stage') {
+            steps {
+                git branch: 'main',
+                url: 'https://github.com/relaxamj/JAVA_CICD_ANAND.git'
+            }
+        }
+
+        stage('Compile Stage') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Test Stage') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Build Stage') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Docker Build Stage') {
+            steps {
+                sh 'docker build -t javacicdtest .'
+            }
+        }
+
+        stage('Docker Tag Stage') {
+            steps {
+                sh 'docker tag javacicdtest relaxamj/javacicdtest:latest'
+            }
+        }
+
+        stage('Docker Push Stage') {
+            steps {
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
+                        sh 'docker push relaxamj/javacicdtest:latest'
+                    }
+                }
+            }
+        }
+    }
+}
