@@ -1,9 +1,9 @@
-FROM eclipse-temurin:11
+FROM eclipse-temurin:17
 
 WORKDIR /app
 
 COPY target/*.jar app.jar
 
-EXPOSE 5001
+EXPOSE 8080
 
 CMD ["java","-jar","app.jar"]
