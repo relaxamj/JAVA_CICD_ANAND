@@ -1,0 +1,108 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "webapp"
+        IMAGE_TAG = "latest"
+
+        EC2_HOST = "ec2-34-224-251-9.compute-1.amazonaws.com"
+        EC2_USER = "ec2-user"
+
+        CONTAINER_NAME = "webapp"
+    }
+
+    stages {
+
+        stage('1. Git Checkout') {
+            steps {
+                git branch: 'main',
+                url: 'https://github.com/relaxamj/JAVA_CICD_ANAND.git'
+            }
+        }
+
+        stage('2. Maven Build') {
+            steps {
+                sh '''
+                    mvn clean package -DskipTests
+                '''
+            }
+        }
+
+        stage('3. Docker Build') {
+            steps {
+                sh '''
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
+            }
+        }
+
+        stage('4. Save Docker Image') {
+            steps {
+                sh '''
+                    docker save -o webapp.tar $IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
+        }
+
+        stage('5. Copy Image to EC2') {
+            steps {
+                sshagent(['ec2-ssh-key']) {
+
+                    sh '''
+                        scp -o StrictHostKeyChecking=no \
+                        webapp.tar \
+                        $EC2_USER@$EC2_HOST:/home/ec2-user/
+                    '''
+                }
+            }
+        }
+
+        stage('6. Deploy on EC2') {
+            steps {
+                sshagent(['ec2-ssh-key']) {
+
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no \
+                    $EC2_USER@$EC2_HOST << EOF
+
+                    echo "===== Loading Docker Image ====="
+                    docker load -i webapp.tar
+
+                    echo "===== Stopping Old Container ====="
+                    docker stop $CONTAINER_NAME || true
+
+                    echo "===== Removing Old Container ====="
+                    docker rm $CONTAINER_NAME || true
+
+                    echo "===== Removing Old Images ====="
+                    docker image prune -f
+
+                    echo "===== Starting New Container ====="
+
+                    docker run -d \
+                        --name $CONTAINER_NAME \
+                        -p 5000:8080 \
+                        $IMAGE_NAME:$IMAGE_TAG
+
+                    echo "===== Deployment Successful ====="
+
+                    docker ps
+
+EOF
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+
+        success {
+            echo "I/CD Pipeline SUCCESS"
+        }
+
+        failure {
+            echo "CI/CD Pipeline FAILED"
+        }
+    }
+}
